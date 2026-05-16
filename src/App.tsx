@@ -7,8 +7,8 @@ import { BooksProvider } from './contexts/BooksContext';
 import { OrdersProvider } from './contexts/OrdersContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import LoginPage from './pages/LoginPage';
-import CustomerRoutes from './routes/CustomerRoutes';
-import AdminRoutes from './routes/AdminRoutes';
+import CustomerRoutes from './routes/CustomerRoutes.tsx';
+import AdminRoutes from './routes/AdminRoutes.tsx';
 
 export default function App() {
   return (

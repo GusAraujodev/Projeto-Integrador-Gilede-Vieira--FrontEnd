@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Separator } from '../../components/ui/separator';
 import confetti from 'canvas-confetti';
+import type { Order } from '../../contexts/OrdersContext';
 
 export default function OrderConfirmationPage() {
   const { orderId } = useParams();
@@ -84,13 +85,13 @@ export default function OrderConfirmationPage() {
     );
   }
 
-  const getPaymentMethodLabel = (method: string) => {
-    const methods = {
+  const getPaymentMethodLabel = (method: Order['paymentMethod']) => {
+    const methods: Record<Order['paymentMethod'], string> = {
       pix: 'PIX',
       credit: 'Cartão de Crédito',
       debit: 'Cartão de Débito'
     };
-    return methods[method] || method;
+    return methods[method];
   };
 
   return (
