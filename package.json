@@ -1,5 +1,5 @@
 {
-      "name": "Projeto Integrador - Gilede Vieira",
+      "name": "projeto-integrador-gilede-vieira",
       "version": "0.1.0",
       "private": true,
       "dependencies": {
@@ -57,6 +57,7 @@
       },
       "scripts": {
             "dev": "vite",
-            "build": "vite build"
+            "build": "vite build",
+            "postinstall": "node ./scripts/fix-vite-bin-permissions.js"
       }
 }
