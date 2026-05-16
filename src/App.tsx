@@ -21,11 +21,11 @@ export default function App() {
                 <CartProvider>
                   <FavoritesProvider>
                     <Routes>
-                      <CustomerRoutes />
+                      <Route path="/admin/*" element={<AdminRoutes />} />
+
+                      <Route path="/*" element={<CustomerRoutes />} />
 
                       <Route path="/login" element={<LoginPage />} />
-
-                      <AdminRoutes />
 
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
