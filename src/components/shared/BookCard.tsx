@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingCart } from 'lucide-react';
+import { Heart, ShoppingCart, Star } from 'lucide-react';
 import { Book } from '../../contexts/BooksContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
@@ -71,6 +71,21 @@ export default function BookCard({ book }: BookCardProps) {
             <h3 className="text-slate-900 dark:text-white mb-1 line-clamp-2 min-h-[2.5rem]">
               {book.title}
             </h3>
+            {(book.salesCount || book.rating) && (
+              <div className="flex flex-wrap items-center gap-2 mb-2 text-xs">
+                {typeof book.rating === 'number' && (
+                  <span className="inline-flex items-center gap-1 text-amber-500 dark:text-amber-400 font-medium">
+                    <Star className="size-3.5 fill-current" />
+                    {book.rating.toFixed(1)}
+                  </span>
+                )}
+                {typeof book.salesCount === 'number' && book.salesCount > 0 && (
+                  <span className="text-slate-500 dark:text-slate-400">
+                    +{book.salesCount} vendidos
+                  </span>
+                )}
+              </div>
+            )}
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{book.author}</p>
           </div>
 

@@ -13,6 +13,7 @@ export interface Book {
   year?: number;
   mlId?: string;
   mlSynced?: boolean;
+  salesCount?: number;
   rating?: number;
   reviews?: Review[];
   isbn?: string;
@@ -76,6 +77,7 @@ type BooksApiItem = {
   active: boolean;
   year?: number;
   mlSynced?: boolean;
+  salesCount?: number;
   rating?: number;
   isbn?: string;
   reviews?: Review[];
@@ -115,6 +117,7 @@ export function BooksProvider({ children }: { children: ReactNode }) {
           active: Boolean(book.active),
           year: typeof book.year === 'number' ? book.year : undefined,
           mlSynced: Boolean(book.mlSynced),
+          salesCount: typeof book.salesCount === 'number' ? book.salesCount : undefined,
           rating: typeof book.rating === 'number' ? book.rating : undefined,
           isbn: typeof book.isbn === 'string' ? book.isbn : undefined,
           reviews: Array.isArray(book.reviews) ? book.reviews : [],
