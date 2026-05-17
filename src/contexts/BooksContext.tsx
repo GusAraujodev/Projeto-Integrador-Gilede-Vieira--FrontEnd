@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 export interface Book {
   id: string;
@@ -29,6 +29,7 @@ export interface Review {
 
 interface BooksContextType {
   books: Book[];
+  loading: boolean;
   addBook: (book: Omit<Book, 'id'>) => void;
   updateBook: (id: string, book: Partial<Book>) => void;
   deleteBook: (id: string) => void;
@@ -61,96 +62,87 @@ interface MLProduct {
 
 const BooksContext = createContext<BooksContextType | undefined>(undefined);
 
-// Mock data inicial
-const initialBooks: Book[] = [
-  {
-    id: '1',
-    title: 'O Poder do Hábito',
-    author: 'Charles Duhigg',
-    description: 'Por que fazemos o que fazemos na vida e nos negócios. Este livro revolucionário explica a ciência por trás dos hábitos e como podemos transformá-los para melhorar nossa vida.',
-    category: 'Autoajuda',
-    price: 42.90,
-    stock: 15,
-    images: ['https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800'],
-    active: true,
-    year: 2012,
-    rating: 4.5,
-    reviews: []
-  },
-  {
-    id: '2',
-    title: 'A Bíblia Sagrada',
-    author: 'Vários Autores',
-    description: 'Edição revista e atualizada. Tradução Almeida Revista e Corrigida. Inclui concordância e mapas bíblicos.',
-    category: 'Evangélico',
-    price: 55.00,
-    stock: 25,
-    images: ['https://images.unsplash.com/photo-1519791883288-dc8bd696e667?w=800'],
-    active: true,
-    year: 2020,
-    rating: 5.0,
-    reviews: []
-  },
-  {
-    id: '3',
-    title: 'A Garota no Trem',
-    author: 'Paula Hawkins',
-    description: 'Rachel pega o mesmo trem todas as manhãs. Ela conhece as casas, as ruas e até mesmo as pessoas que vê pela janela. Até que um dia ela vê algo chocante...',
-    category: 'Suspense',
-    price: 38.90,
-    stock: 8,
-    images: ['https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800'],
-    active: true,
-    year: 2015,
-    rating: 4.3,
-    reviews: []
-  },
-  {
-    id: '4',
-    title: 'Orgulho e Preconceito',
-    author: 'Jane Austen',
-    description: 'A história de Elizabeth Bennet e Mr. Darcy é uma das mais adoradas da literatura mundial. Um clássico romance que atravessa gerações.',
-    category: 'Romance',
-    price: 34.90,
-    stock: 12,
-    images: ['https://images.unsplash.com/photo-1524578271613-d550eacf6090?w=800'],
-    active: true,
-    year: 1813,
-    rating: 4.8,
-    reviews: []
-  },
-  {
-    id: '5',
-    title: 'Matemática Básica - 6º Ano',
-    author: 'José Roberto Silva',
-    description: 'Material didático completo para o ensino fundamental. Inclui exercícios práticos e teoria bem explicada.',
-    category: 'Didático',
-    price: 89.90,
-    stock: 20,
-    images: ['https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800'],
-    active: true,
-    year: 2023,
-    rating: 4.2,
-    reviews: []
-  },
-  {
-    id: '6',
-    title: 'Como Eu Era Antes de Você',
-    author: 'Jojo Moyes',
-    description: 'Lou Clark sabe muitas coisas. Ela sabe quantos passos existem entre a parada de ônibus e sua casa. Ela sabe que gosta de trabalhar em um café... Mas Lou não sabe que está prestes a perder o emprego.',
-    category: 'Romance',
-    price: 44.90,
-    stock: 6,
-    images: ['https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800'],
-    active: true,
-    year: 2012,
-    rating: 4.6,
-    reviews: []
-  }
-];
+const BOOKS_API_URL = `${import.meta.env.VITE_API_URL || 'https://livraria-backend-1m69.onrender.com'}/books`;
+
+type BooksApiItem = {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  category: string;
+  price: number;
+  stock: number;
+  images: string[];
+  active: boolean;
+  year?: number;
+  mlSynced?: boolean;
+  rating?: number;
+  isbn?: string;
+  reviews?: Review[];
+  mlId?: string;
+};
 
 export function BooksProvider({ children }: { children: ReactNode }) {
-  const [books, setBooks] = useState<Book[]>(initialBooks);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const loadBooks = async () => {
+      setLoading(true);
+
+      try {
+        const response = await fetch(BOOKS_API_URL, { signal: controller.signal });
+
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar livros: ${response.status}`);
+        }
+
+        const data = (await response.json()) as BooksApiItem[];
+        const normalizedBooks: Book[] = data.map((book) => ({
+          id: String(book.id),
+          title: book.title,
+          author: book.author,
+          description: book.description,
+          category: book.category,
+          price: Number(book.price),
+          stock: Number(book.stock),
+          images: Array.isArray(book.images)
+            ? book.images.filter((image): image is string => typeof image === 'string')
+            : [],
+          active: Boolean(book.active),
+          year: typeof book.year === 'number' ? book.year : undefined,
+          mlSynced: Boolean(book.mlSynced),
+          rating: typeof book.rating === 'number' ? book.rating : undefined,
+          isbn: typeof book.isbn === 'string' ? book.isbn : undefined,
+          reviews: Array.isArray(book.reviews) ? book.reviews : [],
+          mlId: typeof book.mlId === 'string' ? book.mlId : undefined,
+        }));
+
+        if (isMounted) {
+          setBooks(normalizedBooks);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted && isMounted) {
+          console.error('Erro ao carregar livros da API.', error);
+          setBooks([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadBooks();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
 
   const addBook = (book: Omit<Book, 'id'>) => {
     const newBook: Book = {
@@ -214,6 +206,7 @@ export function BooksProvider({ children }: { children: ReactNode }) {
   return (
     <BooksContext.Provider value={{
       books,
+      loading,
       addBook,
       updateBook,
       deleteBook,

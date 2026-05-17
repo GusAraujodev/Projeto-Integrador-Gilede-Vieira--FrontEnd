@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { ArrowRight, TrendingUp } from 'lucide-react';
+import { ArrowRight, TrendingUp, Loader2 } from 'lucide-react';
 import { useBooks } from '../../contexts/BooksContext';
 import BookCard from '../../components/shared/BookCard';
 import { Button } from '../../components/ui/button';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 export default function HomePage() {
-  const { books } = useBooks();
+  const { books, loading } = useBooks();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search');
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>([]);
@@ -65,6 +65,37 @@ export default function HomePage() {
         return '1524578271613-d550eacf6090'; // Default to Romance
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200/70 dark:border-slate-700 bg-white/90 dark:bg-slate-900/85 backdrop-blur-md shadow-xl px-8 py-10 text-center">
+          <Loader2 className="mx-auto mb-4 size-10 animate-spin text-[#1e3a5f] dark:text-blue-400" />
+          <h2 className="text-2xl text-slate-900 dark:text-white mb-2">
+            Carregando catálogo de livros...
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            Aguarde alguns segundos enquanto a API do Render acorda e traz os dados reais.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!searchQuery && books.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200/70 dark:border-slate-700 bg-white/90 dark:bg-slate-900/85 backdrop-blur-md shadow-xl px-8 py-10 text-center">
+          <h2 className="text-2xl text-slate-900 dark:text-white mb-2">
+            Nenhum livro disponível no momento.
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            Tente recarregar a página em instantes. Se a API estiver indisponível, a loja permanecerá vazia até a resposta voltar.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
