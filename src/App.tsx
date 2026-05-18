@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
@@ -21,13 +21,9 @@ export default function App() {
                 <CartProvider>
                   <FavoritesProvider>
                     <Routes>
-                      <Route path="/admin/*" element={<AdminRoutes />} />
-
-                      <Route path="/*" element={<CustomerRoutes />} />
-
                       <Route path="/login" element={<LoginPage />} />
-
-                      <Route path="*" element={<Navigate to="/" replace />} />
+                      <Route path="/admin/*" element={<AdminRoutes />} />
+                      <Route path="/*" element={<CustomerRoutes />} />
                     </Routes>
                   </FavoritesProvider>
                 </CartProvider>
