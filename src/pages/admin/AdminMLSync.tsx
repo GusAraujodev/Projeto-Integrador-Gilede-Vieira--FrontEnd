@@ -1,39 +1,178 @@
-import { useState } from 'react';
-import { RefreshCw, Download, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { RefreshCw, Download, CheckCircle, AlertCircle, ArrowRight, ExternalLink } from 'lucide-react';
 import { useBooks } from '../../contexts/BooksContext';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+
+type MlStatus = 'connected' | 'disconnected';
 
 export default function AdminMLSync() {
   const { books, syncFromML } = useBooks();
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [mlStatus, setMlStatus] = useState<MlStatus>('disconnected');
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const syncedBooks = books.filter(b => b.mlSynced);
 
-  // Mock ML products for demonstration
-  const mockMLProducts = [
-    {
-      id: 'MLB123456789',
-      title: 'A Sutil Arte de Ligar o F*da-se',
-      category: 'Autoajuda',
-      price: 39.90,
-      available_quantity: 20,
-      description: 'Um livro revolucionário sobre como viver melhor focando no que realmente importa.',
-      pictures: [{ url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800' }],
-      attributes: [{ name: 'Autor', value: 'Mark Manson' }]
-    }
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
 
-  const handleSync = () => {
+    const checkStatus = async () => {
+      setStatusLoading(true);
+
+      try {
+        const token = localStorage.getItem('gilede_jwt');
+
+        if (!token) {
+          if (isMounted) {
+            setMlStatus('disconnected');
+          }
+          return;
+        }
+
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ml/status`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+        });
+
+        if (response.ok) {
+          if (isMounted) {
+            setMlStatus('connected');
+          }
+          return;
+        }
+
+        if (isMounted) {
+          setMlStatus('disconnected');
+        }
+      } catch (error) {
+        if (!controller.signal.aborted && isMounted) {
+          console.error('Erro ao consultar status do Mercado Livre:', error);
+          setMlStatus('disconnected');
+        }
+      } finally {
+        if (isMounted) {
+          setStatusLoading(false);
+        }
+      }
+    };
+
+    checkStatus();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  const handleLinkAccount = async () => {
+    setActionLoading(true);
+
+    try {
+      const token = localStorage.getItem('gilede_jwt');
+
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ml/auth-url`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao gerar URL de autorização');
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      let authUrl = '';
+
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        authUrl = data.authUrl || data.url || data.authorizationUrl || '';
+      } else {
+        authUrl = (await response.text()).trim();
+      }
+
+      if (authUrl) {
+        window.location.href = authUrl;
+      }
+    } catch (error) {
+      console.error('Erro ao obter URL de autorização do Mercado Livre:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSync = async () => {
     setSyncing(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      syncFromML(mockMLProducts);
+
+    try {
+      const token = localStorage.getItem('gilede_jwt');
+
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ml/sync`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao sincronizar o catálogo');
+      }
+
+      const data = await response.json().catch(() => null);
+      const importedBooks = Array.isArray(data?.books)
+        ? data.books
+        : Array.isArray(data)
+          ? data
+          : [];
+
+      if (importedBooks.length > 0) {
+        syncFromML(importedBooks);
+      }
+
       setLastSync(new Date());
+      setMlStatus('connected');
+    } catch (error) {
+      console.error('Erro ao sincronizar catálogo do Mercado Livre:', error);
+      setMlStatus('disconnected');
+    } finally {
       setSyncing(false);
-    }, 2000);
+    }
+  };
+
+  const isConnected = mlStatus === 'connected';
+  const primaryButtonLabel = statusLoading
+    ? 'Verificando conexão...'
+    : isConnected
+      ? 'Sincronizar Catálogo Manualmente'
+      : 'Vincular Conta do Mercado Livre';
+
+  const handlePrimaryAction = async () => {
+    if (statusLoading) {
+      return;
+    }
+
+    if (isConnected) {
+      await handleSync();
+      return;
+    }
+
+    await handleLinkAccount();
   };
 
   return (
@@ -68,16 +207,20 @@ export default function AdminMLSync() {
 
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
-              <CheckCircle className="size-6 text-green-600 dark:text-green-400" />
+            <div className={`p-3 rounded-lg ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+              {isConnected ? (
+                <CheckCircle className="size-6 text-green-600 dark:text-green-400" />
+              ) : (
+                <AlertCircle className="size-6 text-red-600 dark:text-red-400" />
+              )}
             </div>
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                Última Sincronização
+                Status da Conta
               </p>
-              <p className="text-slate-900 dark:text-white">
-                {lastSync ? lastSync.toLocaleString('pt-BR') : 'Nunca'}
-              </p>
+              <Badge className={isConnected ? 'bg-green-600' : 'bg-red-600'}>
+                {statusLoading ? 'Verificando...' : isConnected ? 'Conectado' : 'Desconectado'}
+              </Badge>
             </div>
           </div>
         </div>
@@ -132,20 +275,24 @@ export default function AdminMLSync() {
           </div>
         </div>
         <Button
-          onClick={handleSync}
-          disabled={syncing}
+          onClick={handlePrimaryAction}
+          disabled={syncing || actionLoading || statusLoading}
           className="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-semibold"
           size="lg"
         >
-          {syncing ? (
+          {syncing || actionLoading ? (
             <>
               <RefreshCw className="size-4 mr-2 animate-spin" />
-              Sincronizando...
+              {isConnected ? 'Sincronizando...' : 'Gerando vínculo...'}
             </>
           ) : (
             <>
-              <Download className="size-4 mr-2" />
-              Importar Agora
+              {isConnected ? (
+                <Download className="size-4 mr-2" />
+              ) : (
+                <ExternalLink className="size-4 mr-2" />
+              )}
+              {primaryButtonLabel}
             </>
           )}
         </Button>
@@ -210,7 +357,6 @@ export default function AdminMLSync() {
         </div>
       )}
 
-      {/* API Info */}
       <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-6">
         <h3 className="text-slate-900 dark:text-white mb-3">
           Status da Conexão
@@ -218,12 +364,14 @@ export default function AdminMLSync() {
         <div className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
           <div className="flex items-center justify-between">
             <span>Status:</span>
-            <Badge className="bg-yellow-600">Modo Demonstração</Badge>
+            <Badge className={isConnected ? 'bg-green-600' : 'bg-red-600'}>
+              {statusLoading ? 'Verificando...' : isConnected ? 'Conectado' : 'Desconectado'}
+            </Badge>
           </div>
           <div className="flex items-center justify-between">
             <span>Sua Loja ML:</span>
-            <a 
-              href="https://lista.mercadolivre.com.br/_CustId_532947791" 
+            <a
+              href="https://lista.mercadolivre.com.br/_CustId_532947791"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
@@ -231,13 +379,6 @@ export default function AdminMLSync() {
               Ver no Mercado Livre
               <ArrowRight className="size-3" />
             </a>
-          </div>
-          <div className="border-t border-slate-200 dark:border-slate-600 pt-3 mt-3">
-            <p className="text-xs">
-              <strong>Nota:</strong> Esta é uma demonstração da funcionalidade. 
-              Em produção, você precisará autenticar sua conta do Mercado Livre 
-              através da API oficial para sincronização em tempo real.
-            </p>
           </div>
         </div>
       </div>

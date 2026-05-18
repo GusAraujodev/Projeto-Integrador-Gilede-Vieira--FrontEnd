@@ -1,3 +1,4 @@
+/* css(unknownAtRules): ignore */
 @custom-variant dark (&:is(.dark *));
 
 :root {
