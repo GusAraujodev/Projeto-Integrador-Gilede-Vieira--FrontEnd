@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Book } from './BooksContext';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 export interface CartItem {
   book: Book;

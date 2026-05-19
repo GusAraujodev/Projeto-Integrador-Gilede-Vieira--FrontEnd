@@ -6,34 +6,8 @@ import BookCard from '../../components/shared/BookCard';
 import { Button } from '../../components/ui/button';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
-function BookCardSkeleton() {
-  return (
-    <div className="group h-full overflow-hidden rounded-lg border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
-      <div className="relative aspect-[3/4] bg-slate-200/80 dark:bg-slate-700/80 animate-pulse">
-        <div className="absolute top-2 left-2 h-6 w-24 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20" />
-        <div className="absolute top-2 right-2 h-10 w-10 rounded-full bg-slate-100/90 dark:bg-slate-600/90" />
-      </div>
-
-      <div className="p-4 flex flex-col gap-3 animate-pulse">
-        <div className="h-3 w-20 rounded-full bg-slate-200 dark:bg-slate-700" />
-        <div className="space-y-2">
-          <div className="h-4 w-full rounded-full bg-slate-200 dark:bg-slate-700" />
-          <div className="h-4 w-4/5 rounded-full bg-slate-200 dark:bg-slate-700" />
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-amber-400/70" />
-          <div className="h-3 w-12 rounded-full bg-slate-200 dark:bg-slate-700" />
-          <div className="h-3 w-16 rounded-full bg-slate-200 dark:bg-slate-700" />
-        </div>
-        <div className="h-4 w-28 rounded-full bg-slate-200 dark:bg-slate-700" />
-        <div className="mt-1 h-11 w-full rounded-md bg-gradient-to-r from-purple-600/70 to-pink-500/70" />
-      </div>
-    </div>
-  );
-}
-
 export default function HomePage() {
-  const { books, loading } = useBooks();
+  const { books } = useBooks();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search');
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>([]);
@@ -92,21 +66,6 @@ export default function HomePage() {
     }
   };
 
-  if (!loading && !searchQuery && books.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200/70 dark:border-slate-700 bg-white/90 dark:bg-slate-900/85 backdrop-blur-md shadow-xl px-8 py-10 text-center">
-          <h2 className="text-2xl text-slate-900 dark:text-white mb-2">
-            Nenhum livro disponível no momento.
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400">
-            Estamos preparando nosso catálogo de livros. Por favor, retorne em alguns instantes para conferir as novidades!
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen">
       {/* Hero Banner */}
@@ -140,7 +99,7 @@ export default function HomePage() {
       )}
 
       {/* Search Results */}
-      {searchQuery && !loading && (
+      {searchQuery && (
         <section className="container mx-auto px-4 py-8">
           <h2 className="text-2xl text-slate-900 dark:text-white mb-2">
             Resultados para "{searchQuery}"
@@ -163,74 +122,8 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Search Loading Skeleton */}
-      {searchQuery && loading && (
-        <section className="container mx-auto px-4 py-8">
-          <h2 className="text-2xl text-slate-900 dark:text-white mb-2">
-            Resultados para "{searchQuery}"
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">
-            Carregando catálogo de livros...
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <BookCardSkeleton key={`search-skeleton-${index}`} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Loading Skeleton */}
-      {loading && !searchQuery && (
-        <>
-          <section className="container mx-auto px-4 py-12">
-            <h2 className="text-3xl text-slate-900 dark:text-white mb-8">
-              Explore por Categoria
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {categories.map((cat) => (
-                <div
-                  key={cat}
-                  className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200/70 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-700/70 animate-pulse"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent" />
-                  <div className="absolute inset-x-4 bottom-4 h-4 rounded-full bg-white/30 dark:bg-white/10" />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="bg-slate-50 dark:bg-slate-800 py-12">
-            <div className="container mx-auto px-4">
-              <div className="flex items-center gap-2 mb-8">
-                <TrendingUp className="size-6 text-[#1e3a5f] dark:text-blue-400" />
-                <h2 className="text-3xl text-slate-900 dark:text-white">
-                  Destaques
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <BookCardSkeleton key={`featured-skeleton-${index}`} />
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="container mx-auto px-4 py-12">
-            <h2 className="text-3xl text-slate-900 dark:text-white mb-8">
-              Lançamentos
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <BookCardSkeleton key={`recent-skeleton-${index}`} />
-              ))}
-            </div>
-          </section>
-        </>
-      )}
-
       {/* Categories */}
-      {!searchQuery && !loading && (
+      {!searchQuery && (
         <section className="container mx-auto px-4 py-12">
           <h2 className="text-3xl text-slate-900 dark:text-white mb-8">
             Explore por Categoria
@@ -259,7 +152,7 @@ export default function HomePage() {
       )}
 
       {/* Featured Books */}
-      {!searchQuery && !loading && featuredBooks.length > 0 && (
+      {!searchQuery && featuredBooks.length > 0 && (
         <section className="bg-slate-50 dark:bg-slate-800 py-12">
           <div className="container mx-auto px-4">
             <div className="flex items-center gap-2 mb-8">
@@ -278,7 +171,7 @@ export default function HomePage() {
       )}
 
       {/* Recent Books */}
-      {!searchQuery && !loading && recentBooks.length > 0 && (
+      {!searchQuery && recentBooks.length > 0 && (
         <section className="container mx-auto px-4 py-12">
           <h2 className="text-3xl text-slate-900 dark:text-white mb-8">
             Lançamentos
@@ -292,7 +185,7 @@ export default function HomePage() {
       )}
 
       {/* Recently Viewed */}
-      {!searchQuery && !loading && recentlyViewedBooks.length > 0 && (
+      {!searchQuery && recentlyViewedBooks.length > 0 && (
         <section className="container mx-auto px-4 py-12">
           <h2 className="text-3xl text-slate-900 dark:text-white mb-8">
             Vistos Recentemente
@@ -306,7 +199,7 @@ export default function HomePage() {
       )}
 
       {/* CTA Section */}
-      {!searchQuery && !loading && (
+      {!searchQuery && (
         <section className="bg-slate-100 dark:bg-slate-800 py-16">
           <div className="container mx-auto px-4">
             <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -363,7 +256,7 @@ export default function HomePage() {
       )}
 
       {/* WhatsApp CTA */}
-      {!searchQuery && !loading && (
+      {!searchQuery && (
         <section className="bg-[#f5f5dc] dark:bg-slate-700 py-16">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl text-slate-900 dark:text-white mb-4">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Shield, LogOut, Crown, Package, ArrowRight, Mail, Lock } from 'lucide-react';
+import { User, Shield, LogOut, Crown, Package, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -28,24 +28,20 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const savedAccounts = [
-    {
-      name: 'Giovani Vieira',
-      role: 'Cliente',
-      email: 'giovani.vieira@email.com',
-      password: 'cliente123',
-      icon: User,
-      color: 'from-blue-500 to-cyan-500'
-    },
-    {
-      name: 'Gilede Vieira',
-      role: 'Admin',
-      email: 'livrariagiledevieira@gmail.com',
-      password: 'admin123',
-      icon: Shield,
-      color: 'from-purple-600 to-pink-500'
+  const resolveRouteByRole = () => {
+    try {
+      const savedUser = localStorage.getItem('gilede_user');
+
+      if (!savedUser) {
+        return '/';
+      }
+
+      const parsedUser = JSON.parse(savedUser) as { role?: string };
+      return parsedUser.role?.toLowerCase() === 'admin' ? '/admin' : '/';
+    } catch {
+      return '/';
     }
-  ];
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,44 +52,9 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
       const success = await login(email, password);
       if (success) {
         setOpen(false);
-        if (email === 'livrariagiledevieira@gmail.com') {
-          navigate('/admin');
-        }
+        navigate(resolveRouteByRole(), { replace: true });
       } else {
         setError('Email ou senha incorretos');
-      }
-    } catch (err) {
-      setError('Erro ao fazer login');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (account: typeof savedAccounts[0]) => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      // Primeiro faz logout para limpar o estado
-      logout();
-      
-      // Aguarda um pouco para garantir que o state foi atualizado
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Faz login com a nova conta
-      const success = await login(account.email, account.password);
-      if (success) {
-        setOpen(false);
-        
-        // Aguarda para garantir que o login foi processado
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Navega para a área apropriada
-        if (account.role === 'Admin') {
-          navigate('/admin', { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
       }
     } catch (err) {
       setError('Erro ao fazer login');
@@ -138,7 +99,7 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
           </DialogHeader>
           <div className="space-y-4 py-2">
             {/* Conta Atual */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-4 border-2 border-purple-300 dark:border-purple-700">
+            <div className="bg-linear-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-4 border-2 border-purple-300 dark:border-purple-700">
               <p className="text-xs text-purple-600 dark:text-purple-400 mb-2 font-semibold">CONTA ATUAL</p>
               <div className="flex items-center justify-between">
                 <div>
@@ -158,7 +119,7 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
                   setOpen(false);
                   navigate('/admin');
                 }}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                className="w-full bg-linear-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
                 size="lg"
               >
                 <Shield className="size-5 mr-2" />
@@ -173,7 +134,7 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
                   setOpen(false);
                   navigate('/historico');
                 }}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                className="w-full bg-linear-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
                 size="lg"
               >
                 <Package className="size-5 mr-2" />
@@ -181,61 +142,8 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
               </Button>
             )}
 
-            {/* Trocar Conta */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Trocar para outra conta:</p>
-              <div className="space-y-2">
-                {savedAccounts
-                  .filter(acc => acc.email !== user.email)
-                  .map((account) => {
-                    const Icon = account.icon;
-                    return (
-                      <button
-                        key={account.email}
-                        onClick={() => handleQuickLogin(account)}
-                        disabled={loading}
-                        className="w-full p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all text-left group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`bg-gradient-to-r ${account.color} p-2 rounded-full`}>
-                            <Icon className="size-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-slate-900 dark:text-white font-medium">{account.name}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{account.role}</p>
-                          </div>
-                          <ArrowRight className="size-5 text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" />
-                        </div>
-                      </button>
-                    );
-                  })}
-              </div>
-            </div>
-
             {/* Outras opções */}
             <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  setOpen(false);
-                  navigate('/login');
-                }}
-              >
-                <Mail className="size-4 mr-2" />
-                Adicionar Nova Conta
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-slate-600 dark:text-slate-400"
-                onClick={() => {
-                  setOpen(false);
-                  navigate('/esqueci-senha');
-                }}
-              >
-                <Lock className="size-4 mr-2" />
-                Esqueci a Senha
-              </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -270,43 +178,11 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
             Minha Conta
           </DialogTitle>
           <DialogDescription className="text-slate-600 dark:text-slate-400">
-            Entre com sua conta ou escolha uma conta salva
+            Entre com sua conta para acessar sua área personalizada
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Saved Accounts */}
-          <div>
-            <h3 className="text-sm text-slate-700 dark:text-slate-300 mb-3">Contas Salvas</h3>
-            <div className="grid gap-3">
-              {savedAccounts.map((account) => {
-                const Icon = account.icon;
-                return (
-                  <button
-                    key={account.email}
-                    onClick={() => handleQuickLogin(account)}
-                    disabled={loading}
-                    className={`
-                      flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 dark:border-slate-700
-                      hover:border-purple-500 dark:hover:border-purple-400 transition-all
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                      bg-gradient-to-r ${account.color} bg-opacity-5 hover:bg-opacity-10
-                    `}
-                  >
-                    <div className={`flex items-center justify-center size-12 rounded-full bg-gradient-to-r ${account.color} text-white`}>
-                      <Icon className="size-6" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-slate-900 dark:text-white">{account.name}</p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">{account.role}</p>
-                    </div>
-                    <ArrowRight className="size-5 text-slate-400" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-slate-300 dark:border-slate-700" />
@@ -358,18 +234,9 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
               </div>
             )}
 
-            <div className="flex items-center justify-between text-sm">
-              <button
-                type="button"
-                className="text-purple-600 dark:text-purple-400 hover:underline"
-              >
-                Esqueci minha senha
-              </button>
-            </div>
-
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600"
+              className="w-full bg-linear-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600"
               size="lg"
               disabled={loading}
             >

@@ -27,18 +27,7 @@ export default function LoginPage() {
     try {
       const success = await login(email, password);
       if (success) {
-        try {
-          const savedUser = localStorage.getItem('gilede_user');
-          const nextUser = savedUser ? JSON.parse(savedUser) : user;
-
-          if (nextUser?.role === 'admin') {
-            navigate('/admin', { replace: true });
-          } else {
-            navigate('/', { replace: true });
-          }
-        } catch {
-          navigate('/', { replace: true });
-        }
+        navigate('/admin');
       } else {
         setError('Email ou senha incorretos');
       }
