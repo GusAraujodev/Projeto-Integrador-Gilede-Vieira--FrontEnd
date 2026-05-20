@@ -7,8 +7,7 @@ import {
   HelpCircle, 
   Info, 
   Shield,
-  User as UserIcon,
-  Lock
+  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
@@ -45,15 +44,6 @@ export default function UserMenu() {
         {user ? (
           <>
             <DropdownMenuGroup>
-              {user.role === 'customer' && (
-                <DropdownMenuItem asChild>
-                  <Link to="/historico" className="flex items-center cursor-pointer dark:text-slate-300 dark:hover:bg-slate-700">
-                    <Package className="mr-2 size-4" />
-                    <span>Meus Pedidos</span>
-                  </Link>
-                </DropdownMenuItem>
-              )}
-              
               {user.role === 'admin' && (
                 <DropdownMenuItem asChild>
                   <Link to="/admin" className="flex items-center cursor-pointer dark:text-slate-300 dark:hover:bg-slate-700">
@@ -62,33 +52,23 @@ export default function UserMenu() {
                   </Link>
                 </DropdownMenuItem>
               )}
+              
+              <DropdownMenuItem asChild>
+                <Link to="/pedidos" className="flex items-center cursor-pointer dark:text-slate-300 dark:hover:bg-slate-700">
+                  <Package className="mr-2 size-4" />
+                  <span>Meus Pedidos</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link to="/configuracoes" className="flex items-center cursor-pointer dark:text-slate-300 dark:hover:bg-slate-700">
+                  <Settings className="mr-2 size-4" />
+                  <span>Configurações</span>
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             
             <DropdownMenuSeparator className="dark:bg-slate-700" />
-            
-            <DropdownMenuLabel className="dark:text-slate-400 text-xs">
-              Em breve
-            </DropdownMenuLabel>
-            
-            <DropdownMenuGroup>
-              <DropdownMenuItem disabled className="dark:text-slate-500 opacity-50">
-                <UserIcon className="mr-2 size-4" />
-                <span>Meu Perfil</span>
-                <Lock className="ml-auto size-3" />
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem disabled className="dark:text-slate-500 opacity-50">
-                <CreditCard className="mr-2 size-4" />
-                <span>Métodos de Pagamento</span>
-                <Lock className="ml-auto size-3" />
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem disabled className="dark:text-slate-500 opacity-50">
-                <Settings className="mr-2 size-4" />
-                <span>Configurações</span>
-                <Lock className="ml-auto size-3" />
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
           </>
         ) : (
           <DropdownMenuItem asChild>

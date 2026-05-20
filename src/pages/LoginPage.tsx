@@ -47,7 +47,7 @@ export default function LoginPage() {
             <img src={logo} alt="Livraria Gilede Vieira" className="h-20 w-auto" />
           </div>
           <h1 className="text-3xl text-white mb-2">Livraria Gilede Vieira</h1>
-          <p className="text-white/90 text-lg">Área Administrativa</p>
+          <p className="text-white/90 text-lg">Faça login para continuar</p>
         </div>
 
         {/* Login Form */}
@@ -65,7 +65,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
-                  placeholder="admin@gilede.com"
+                  placeholder="Digite seu email.."
                   required
                 />
               </div>
@@ -102,16 +102,6 @@ export default function LoginPage() {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-              Credenciais de teste:
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-500">
-              Email: livrariagiledevieira@gmail.com<br />
-              Senha: admin123
-            </p>
-          </div>
 
           <div className="mt-6 text-center">
             <Button
