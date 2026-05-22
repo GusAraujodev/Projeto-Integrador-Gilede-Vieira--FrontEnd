@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Download, CheckCircle, AlertCircle, ArrowRight, ExternalLink } from 'lucide-react';
 import { useBooks } from '../../contexts/BooksContext';
 import { Button } from '../../components/ui/button';
@@ -13,8 +14,29 @@ export default function AdminMLSync() {
   const [mlStatus, setMlStatus] = useState<MlStatus>('disconnected');
   const [statusLoading, setStatusLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const syncedBooks = books.filter(b => b.mlSynced);
+
+  useEffect(() => {
+    const mlParam = searchParams.get('ml');
+    const reason = searchParams.get('reason');
+    if (!mlParam) return;
+
+    setSearchParams({}, { replace: true });
+
+    if (mlParam === 'connected') {
+      setMlStatus('connected');
+      setStatusLoading(false);
+      handleSync();
+    } else if (mlParam === 'error') {
+      setMlStatus('disconnected');
+      setStatusLoading(false);
+      if (reason) {
+        console.error('Erro OAuth ML:', decodeURIComponent(reason));
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let isMounted = true;
