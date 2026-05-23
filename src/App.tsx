@@ -6,7 +6,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { BooksProvider } from './contexts/BooksContext';
 import { OrdersProvider } from './contexts/OrdersContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
-import LoginPage from './pages/LoginPage';
 import CustomerRoutes from './routes/CustomerRoutes.tsx';
 import AdminRoutes from './routes/AdminRoutes.tsx';
 
@@ -21,7 +20,6 @@ export default function App() {
                 <CartProvider>
                   <FavoritesProvider>
                     <Routes>
-                      <Route path="/login" element={<LoginPage />} />
                       <Route path="/admin/*" element={<AdminRoutes />} />
                       <Route path="/*" element={<CustomerRoutes />} />
                     </Routes>

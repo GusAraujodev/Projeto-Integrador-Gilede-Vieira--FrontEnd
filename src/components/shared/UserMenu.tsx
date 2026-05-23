@@ -7,7 +7,6 @@ import {
   HelpCircle, 
   Info, 
   Shield,
-  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
@@ -70,14 +69,7 @@ export default function UserMenu() {
             
             <DropdownMenuSeparator className="dark:bg-slate-700" />
           </>
-        ) : (
-          <DropdownMenuItem asChild>
-            <Link to="/login" className="flex items-center cursor-pointer dark:text-slate-300 dark:hover:bg-slate-700">
-              <UserIcon className="mr-2 size-4" />
-              <span>Entrar / Cadastrar</span>
-            </Link>
-          </DropdownMenuItem>
-        )}
+        ) : null}
         
         <DropdownMenuSeparator className="dark:bg-slate-700" />
         

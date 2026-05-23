@@ -64,7 +64,7 @@ export default function OrderHistoryPage() {
           Você precisa estar logado para acessar seu histórico de pedidos.
         </p>
         <Link
-          to="/login"
+          to="/"
           className="inline-block bg-gradient-to-r from-purple-600 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-600 transition-all"
         >
           Fazer Login

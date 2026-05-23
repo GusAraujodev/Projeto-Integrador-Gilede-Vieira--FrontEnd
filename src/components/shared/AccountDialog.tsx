@@ -144,18 +144,18 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
 
             {/* Outras opções */}
             <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2">
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg border border-red-500/10 bg-red-500/5 px-3 py-2 text-left text-red-600 transition-colors hover:bg-red-500/10 hover:text-red-700 dark:border-red-400/10 dark:bg-red-400/10 dark:text-red-300 dark:hover:bg-red-400/15 dark:hover:text-red-200"
                 onClick={() => {
                   logout();
                   setOpen(false);
-                  navigate('/login');
+                  window.location.href = '/';
                 }}
               >
-                <LogOut className="size-4 mr-2" />
-                Sair de Todas as Contas
-              </Button>
+                <LogOut className="size-4 shrink-0" />
+                <span>Sair</span>
+              </button>
             </div>
           </div>
         </DialogContent>

@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, BookOpen, ShoppingBag, Settings, Menu, X, User, RefreshCw, ChevronRight, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrders } from '../../contexts/OrdersContext';
@@ -19,7 +19,6 @@ const navigation = [
 
 export default function AdminLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { logout, user } = useAuth();
   const { pendingOrdersCount } = useOrders();
   const { theme, toggleTheme } = useTheme();
@@ -27,7 +26,7 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    window.location.href = '/';
   };
 
   return (
