@@ -44,6 +44,14 @@ export default function AdminBooks() {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
+  const sortedBooks = [...filteredBooks].sort((a, b) => {
+    if (a.active !== b.active) {
+      return a.active ? -1 : 1;
+    }
+
+    return a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' });
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -129,9 +137,14 @@ export default function AdminBooks() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {filteredBooks.length > 0 ? (
-                filteredBooks.map(book => (
-                  <tr key={book.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+              {sortedBooks.length > 0 ? (
+                sortedBooks.map(book => (
+                  <tr
+                    key={book.id}
+                    className={book.active
+                      ? 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800/90'}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-16 bg-slate-100 dark:bg-slate-700 rounded overflow-hidden flex-shrink-0">
@@ -176,7 +189,9 @@ export default function AdminBooks() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge className={book.active ? 'bg-green-500' : 'bg-gray-500'}>
+                      <Badge
+                        variant="outline"
+                      >
                         {book.active ? 'Ativo' : 'Pausado'}
                       </Badge>
                     </td>
@@ -185,7 +200,13 @@ export default function AdminBooks() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => toggleBookStatus(book.id)}
+                          onClick={async () => {
+                            try {
+                              await toggleBookStatus(book.id, book.active);
+                            } catch (error) {
+                              console.error('Erro ao alternar status do livro:', error);
+                            }
+                          }}
                           title={book.active ? 'Pausar' : 'Ativar'}
                         >
                           <Power className={`size-4 ${book.active ? 'text-orange-600' : 'text-green-600'}`} />
@@ -213,7 +234,13 @@ export default function AdminBooks() {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => deleteBook(book.id)}
+                                onClick={async () => {
+                                  try {
+                                    await deleteBook(book.id);
+                                  } catch (error) {
+                                    console.error('Erro ao excluir livro:', error);
+                                  }
+                                }}
                                 className="bg-red-600 hover:bg-red-700"
                               >
                                 Excluir

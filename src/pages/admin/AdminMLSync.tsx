@@ -164,7 +164,7 @@ export default function AdminMLSync() {
           : [];
 
       if (importedBooks.length > 0) {
-        syncFromML(importedBooks);
+        await syncFromML(importedBooks);
       }
 
       setLastSync(new Date());

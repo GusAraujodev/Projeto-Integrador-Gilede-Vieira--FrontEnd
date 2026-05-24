@@ -46,6 +46,8 @@ export default function AdminBookForm() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (isEditing && id) {
@@ -110,12 +112,15 @@ export default function AdminBookForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validate()) {
       return;
     }
+
+    setSaving(true);
+    setSubmitError('');
 
     const bookData = {
       title: formData.title,
@@ -129,16 +134,24 @@ export default function AdminBookForm() {
       images: formData.images.filter(img => img.trim()),
       active: formData.active,
       rating: undefined,
-      reviews: []
+      mlId: undefined,
+      mlSynced: undefined
     };
 
-    if (isEditing && id) {
-      updateBook(id, bookData);
-    } else {
-      addBook(bookData);
-    }
+    try {
+      if (isEditing && id) {
+        await updateBook(id, bookData);
+      } else {
+        await addBook(bookData);
+      }
 
-    navigate('/admin/livros');
+      navigate('/admin/livros');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao salvar o livro';
+      setSubmitError(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -158,6 +171,12 @@ export default function AdminBookForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {submitError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+            {submitError}
+          </div>
+        )}
+
         {/* Basic Info */}
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
           <h2 className="text-xl text-slate-900 dark:text-white mb-6">
@@ -353,6 +372,7 @@ export default function AdminBookForm() {
             <Button
               type="button"
               variant="outline"
+              disabled={saving}
               onClick={() => navigate('/admin/livros')}
             >
               Cancelar
@@ -360,9 +380,10 @@ export default function AdminBookForm() {
             <Button
               type="submit"
               className="bg-[#1e3a5f] hover:bg-[#2d5082] dark:bg-blue-600 dark:hover:bg-blue-700"
+              disabled={saving}
             >
               <Save className="size-4 mr-2" />
-              {isEditing ? 'Salvar Alterações' : 'Adicionar Livro'}
+              {saving ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Adicionar Livro'}
             </Button>
           </div>
         </div>

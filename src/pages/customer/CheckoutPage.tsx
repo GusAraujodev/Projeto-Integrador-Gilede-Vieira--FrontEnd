@@ -69,7 +69,7 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -77,39 +77,37 @@ export default function CheckoutPage() {
     }
 
     setIsSubmitting(true);
+    try {
+      const orderId = createOrder({
+        userId: user?.email,
+        items,
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        address: {
+          street: formData.street,
+          number: formData.number,
+          complement: formData.complement,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+        },
+        paymentMethod: formData.paymentMethod,
+        total,
+        discount,
+        couponCode,
+      });
 
-    const orderId = createOrder({
-      userId: user?.email, // Associate order with user
-      items,
-      customerName: formData.name,
-      customerEmail: formData.email,
-      customerPhone: formData.phone,
-      address: {
-        street: formData.street,
-        number: formData.number,
-        complement: formData.complement,
-        neighborhood: formData.neighborhood,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode
-      },
-      paymentMethod: formData.paymentMethod,
-      total,
-      discount,
-      couponCode
-    });
+      await Promise.all(items.map((item) => reduceStock(item.book.id, item.quantity)));
 
-    console.log('Order created with ID:', orderId);
-
-    // Reduce stock for each item in the cart
-    items.forEach(item => {
-      reduceStock(item.book.id, item.quantity);
-    });
-
-    clearCart();
-    
-    console.log('Navigating to:', `/pedido/${orderId}`);
-    navigate(`/pedido/${orderId}`);
+      clearCart();
+      navigate(`/pedido/${orderId}`);
+    } catch (error) {
+      console.error('Erro ao finalizar compra:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
