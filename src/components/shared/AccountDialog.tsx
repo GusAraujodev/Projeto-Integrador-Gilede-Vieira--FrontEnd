@@ -21,12 +21,19 @@ interface AccountDialogProps {
 export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, logout, user } = useAuth();
+  const { login, logout, user, register } = useAuth();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPass, setRegPass] = useState('');
+  const [regConfirm, setRegConfirm] = useState('');
+  const [regError, setRegError] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
 
   const resolveRouteByRole = () => {
     try {
@@ -60,6 +67,27 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
       setError('Erro ao fazer login');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegError('');
+    if (regPass !== regConfirm) { setRegError('As senhas não coincidem.'); return; }
+    if (regPass.length < 8) { setRegError('Senha mínima: 8 caracteres.'); return; }
+    setRegLoading(true);
+    try {
+      const result = await register(regName, regEmail, regPass, regConfirm);
+      if (result.ok) {
+        setOpen(false);
+        navigate('/', { replace: true });
+      } else {
+        setRegError(result.error ?? 'Erro ao criar conta.');
+      }
+    } catch {
+      setRegError('Erro ao conectar ao servidor.');
+    } finally {
+      setRegLoading(false);
     }
   };
 
@@ -171,15 +199,12 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
           <span className="hidden sm:inline ml-1">Minha Conta</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px] dark:bg-slate-800">
+      <DialogContent className="sm:max-w-[480px] dark:bg-slate-800" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="text-2xl text-slate-900 dark:text-white flex items-center gap-2">
-            <User className="size-6 text-purple-600 dark:text-purple-400" />
+          <DialogTitle className="text-xl text-slate-900 dark:text-white flex items-center gap-2">
+            <User className="size-5 text-purple-600 dark:text-purple-400" />
             Minha Conta
           </DialogTitle>
-          <DialogDescription className="text-slate-600 dark:text-slate-400">
-            Entre com sua conta para acessar sua área personalizada
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -194,55 +219,135 @@ export default function AccountDialog({ renderTrigger }: AccountDialogProps) {
             </div>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 dark:bg-slate-700 dark:border-slate-600"
-                  placeholder="seu@email.com"
-                  required
-                />
+          <div className="relative flex border-b border-slate-200 dark:border-slate-700 mt-2">
+            {(['login', 'register'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => { setActiveTab(tab); setError(''); setRegError(''); }}
+                className={`flex-1 pb-3 text-sm font-medium transition-colors ${
+                  activeTab === tab
+                    ? 'text-slate-900 dark:text-white'
+                    : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                }`}
+              >
+                {tab === 'login' ? 'Entrar' : 'Criar Conta'}
+              </button>
+            ))}
+            <span
+              className="absolute bottom-0 h-0.5 bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 w-1/2"
+              style={{ left: activeTab === 'login' ? '0%' : '50%' }}
+            />
+          </div>
+
+          {activeTab === 'login' && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 dark:bg-slate-700 dark:border-slate-600"
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
               </div>
+
+              <div>
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 dark:bg-slate-700 dark:border-slate-600"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full bg-linear-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600"
+                size="lg"
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : 'Entrar'}
+              </Button>
+            </form>
+          )}
+
+          {activeTab === 'register' && (
+            <div className="space-y-4 py-4">
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <Label htmlFor="reg-name">Nome completo</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                    <Input id="reg-name" type="text" value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      className="pl-10 dark:bg-slate-700 dark:border-slate-600"
+                      placeholder="Seu nome completo" required autoComplete="name" />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="reg-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                    <Input id="reg-email" type="email" value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      className="pl-10 dark:bg-slate-700 dark:border-slate-600"
+                      placeholder="seu@email.com" required autoComplete="email" />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="reg-pass">Senha</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                    <Input id="reg-pass" type="password" value={regPass}
+                      onChange={(e) => setRegPass(e.target.value)}
+                      className="pl-10 dark:bg-slate-700 dark:border-slate-600"
+                      placeholder="Mínimo 8 caracteres" required autoComplete="new-password" />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="reg-confirm">Confirmar Senha</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                    <Input id="reg-confirm" type="password" value={regConfirm}
+                      onChange={(e) => setRegConfirm(e.target.value)}
+                      className="pl-10 dark:bg-slate-700 dark:border-slate-600"
+                      placeholder="Repita a senha" required autoComplete="new-password" />
+                  </div>
+                </div>
+                {regError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800
+            text-red-800 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
+                    {regError}
+                  </div>
+                )}
+                <Button type="submit" disabled={regLoading}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-500
+            hover:from-purple-700 hover:to-pink-600" size="lg">
+                  {regLoading ? 'Criando conta...' : 'Criar Minha Conta'}
+                </Button>
+              </form>
             </div>
-
-            <div>
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 dark:bg-slate-700 dark:border-slate-600"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full bg-linear-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600"
-              size="lg"
-              disabled={loading}
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </Button>
-          </form>
+          )}
         </div>
       </DialogContent>
     </Dialog>

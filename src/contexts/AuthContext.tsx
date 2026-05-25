@@ -11,7 +11,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, confirmPassword: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   isAdmin: boolean;
 }
@@ -146,23 +146,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string): Promise<boolean> => {
+  const register = async (
+    name: string, email: string, password: string, confirmPassword: string
+  ): Promise<{ ok: boolean; error?: string }> => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/auth/register`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, password }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, confirmPassword }),
         }
       );
 
-      return response.ok;
+      if (response.status === 409) {
+        return { ok: false, error: 'Este email já está cadastrado.' };
+      }
+      if (response.status === 400) {
+        const body = await response.json().catch(() => ({})) as { message?: string };
+        return { ok: false, error: body.message ?? 'Dados inválidos.' };
+      }
+      if (!response.ok) {
+        return { ok: false, error: 'Erro no servidor. Tente novamente.' };
+      }
+
+      // O backend retorna AuthDTOs.LoginResponse { token, user: { id, name, email, role } }
+      const data = await response.json() as {
+        token: string;
+        user: { id: string; name: string; email: string; role: string };
+      };
+
+      const nextUser = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role.toLowerCase() as 'admin' | 'customer',
+      };
+
+      setUser(nextUser);
+      localStorage.setItem('gilede_user', JSON.stringify(nextUser));
+      localStorage.setItem('gilede_jwt', data.token);
+      return { ok: true };
     } catch (error) {
-      console.error('Erro ao realizar cadastro:', error);
-      return false;
+      return { ok: false, error: 'Sem conexão com o servidor.' };
     }
   };
 
