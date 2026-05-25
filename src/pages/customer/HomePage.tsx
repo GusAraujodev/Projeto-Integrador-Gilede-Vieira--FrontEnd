@@ -191,8 +191,8 @@ export default function HomePage() {
             Vistos Recentemente
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recentlyViewedBooks.map(book => (
-              <BookCard key={book.id} book={book!} />
+            {recentlyViewedBooks.map((book, index) => (
+              book ? <BookCard key={book?.id ?? `recent-${index}`} book={book} /> : null
             ))}
           </div>
         </section>

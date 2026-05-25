@@ -4,7 +4,7 @@ import { type Order, useOrders } from '../../contexts/OrdersContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -85,7 +85,7 @@ export default function AdminOrders() {
             />
           </div>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
             <SelectTrigger>
               <SelectValue placeholder="Filtrar por status" />
             </SelectTrigger>

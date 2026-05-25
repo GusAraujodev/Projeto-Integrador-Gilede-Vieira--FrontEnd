@@ -39,7 +39,8 @@ export default function NotificationToast() {
           }
         };
 
-        const message = statusMessages[status];
+        const statusKey = String(status).toLowerCase() as keyof typeof statusMessages;
+        const message = statusMessages[statusKey] ?? statusMessages.pending;
         
         toast(message.title, {
           description: message.description,
