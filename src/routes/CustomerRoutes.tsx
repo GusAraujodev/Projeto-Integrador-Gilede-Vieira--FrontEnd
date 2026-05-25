@@ -11,7 +11,6 @@ import AboutPage from '../pages/customer/AboutPage';
 import FAQPage from '../pages/customer/FAQPage';
 import FavoritesPage from '../pages/customer/FavoritesPage';
 import ProfilePage from '../pages/customer/ProfilePage';
-import OrdersPage from '../pages/customer/OrdersPage.tsx';
 
 export default function CustomerRoutes() {
   return (
@@ -25,7 +24,7 @@ export default function CustomerRoutes() {
         <Route path="checkout" element={<CheckoutPage />} />
         <Route path="pedido/:orderId" element={<OrderConfirmationPage />} />
         <Route path="historico" element={<OrderHistoryPage />} />
-        <Route path="pedidos" element={<OrdersPage />} />
+        <Route path="pedidos" element={<OrderHistoryPage />} />
         <Route path="configuracoes" element={<ProfilePage />} />
         <Route path="sobre" element={<AboutPage />} />
         <Route path="faq" element={<FAQPage />} />

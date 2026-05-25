@@ -166,19 +166,27 @@ export function BooksProvider({ children }: { children: ReactNode }) {
 
     try {
       const token = localStorage.getItem('gilede_jwt');
+      const savedUser = localStorage.getItem('gilede_user');
+      const role = savedUser ? JSON.parse(savedUser)?.role?.toUpperCase() : null;
+      const isAdmin = role === 'ADMIN';
 
-      if (!token) {
+      if (isAdmin && !token) {
         setBooks([]);
         return [] as Book[];
       }
 
-      const response = await fetch(ADMIN_BOOKS_API_URL, {
+      const response = await fetch(isAdmin ? ADMIN_BOOKS_API_URL : BOOKS_API_URL, {
         signal,
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: isAdmin && token
+          ? {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            }
+          : {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+            },
       });
 
       if (!response.ok) {

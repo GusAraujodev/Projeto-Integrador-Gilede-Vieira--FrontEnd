@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Smartphone, Lock } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
-import { useOrders } from '../../contexts/OrdersContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useBooks } from '../../contexts/BooksContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -13,17 +11,17 @@ import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, total, discount, couponCode, clearCart } = useCart();
-  const { createOrder } = useOrders();
+  const { items, discount, clearCart } = useCart();
   const { user } = useAuth();
-  const { reduceStock } = useBooks();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shippingCost, setShippingCost] = useState<number | null>(null);
+  const [submitError, setSubmitError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    zipCode: '',
+    cep: '',
     street: '',
     number: '',
     complement: '',
@@ -47,9 +45,99 @@ export default function CheckoutPage() {
     return null;
   }
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: '' }));
+  const clearAddressFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      street: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+    }));
+    setShippingCost(null);
+  };
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    if (name === 'cep') {
+      const cepApenasNumeros = value.replace(/\D/g, '');
+      const cepFinal = cepApenasNumeros.slice(0, 8);
+
+      setFormData(prev => ({ ...prev, cep: cepFinal }));
+      setErrors(prev => ({ ...prev, cep: '' }));
+
+      if (cepFinal.length === 8) {
+        try {
+          clearAddressFields();
+
+          const response = await fetch(`https://viacep.com.br/ws/${cepFinal}/json/`);
+
+          if (!response.ok) {
+            clearAddressFields();
+            return;
+          }
+
+          const data = await response.json() as {
+            erro?: boolean;
+            logradouro?: string;
+            bairro?: string;
+            localidade?: string;
+            uf?: string;
+          };
+
+          if (data.erro) {
+            clearAddressFields();
+            return;
+          }
+
+          setFormData(prev => ({
+            ...prev,
+            street: data.logradouro || '',
+            neighborhood: data.bairro || '',
+            city: data.localidade || '',
+            state: data.uf || '',
+          }));
+          setShippingCost(15.00);
+        } catch (error) {
+          console.error('Erro ao buscar CEP:', error);
+          clearAddressFields();
+        }
+
+        return;
+      }
+
+      clearAddressFields();
+      return;
+    }
+
+    setFormData(prev => {
+      switch (name) {
+        case 'phone':
+          return { ...prev, phone: value.replace(/\D/g, '').slice(0, 11) };
+        case 'number':
+          return { ...prev, number: value.replace(/\D/g, '').slice(0, 6) };
+        case 'state':
+          return { ...prev, state: value.replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase() };
+        default:
+          return { ...prev, [name]: value };
+      }
+    });
+
+    setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const formatPhoneValue = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+
+    if (digits.length <= 2) {
+      return digits;
+    }
+
+    if (digits.length <= 7) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    }
+
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
 
   const validateForm = () => {
@@ -58,7 +146,7 @@ export default function CheckoutPage() {
     if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
     if (!formData.email.trim()) newErrors.email = 'Email é obrigatório';
     if (!formData.phone.trim()) newErrors.phone = 'Telefone é obrigatório';
-    if (!formData.zipCode.trim()) newErrors.zipCode = 'CEP é obrigatório';
+    if (!formData.cep.trim()) newErrors.cep = 'CEP é obrigatório';
     if (!formData.street.trim()) newErrors.street = 'Rua é obrigatória';
     if (!formData.number.trim()) newErrors.number = 'Número é obrigatório';
     if (!formData.neighborhood.trim()) newErrors.neighborhood = 'Bairro é obrigatório';
@@ -77,40 +165,93 @@ export default function CheckoutPage() {
     }
 
     setIsSubmitting(true);
+    setSubmitError('');
+
     try {
-      const orderId = createOrder({
-        userId: user?.email,
-        items,
-        customerName: formData.name,
-        customerEmail: formData.email,
-        customerPhone: formData.phone,
-        address: {
-          street: formData.street,
-          number: formData.number,
-          complement: formData.complement,
-          neighborhood: formData.neighborhood,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
+      const token = localStorage.getItem('gilede_jwt');
+      const savedUser = localStorage.getItem('gilede_user');
+      const userId = (() => {
+        try {
+          if (savedUser) {
+            const parsedUser = JSON.parse(savedUser) as { id?: string | number };
+            if (parsedUser?.id) {
+              return String(parsedUser.id);
+            }
+          }
+
+          if (user?.id) {
+            return user.id;
+          }
+
+          if (!token) return null;
+
+          const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+          return payload.userId || payload.id || payload.sub || null;
+        } catch {
+          return null;
+        }
+      })();
+
+      if (!userId) {
+        throw new Error('Não foi possível identificar o usuário logado');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        paymentMethod: formData.paymentMethod,
-        total,
-        discount,
-        couponCode,
+        body: JSON.stringify({
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          userId,
+          address: {
+            street: formData.street,
+            number: formData.number,
+            complement: formData.complement,
+            neighborhood: formData.neighborhood,
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.cep,
+          },
+          items: items.map((item) => ({
+            bookId: item.book.id,
+            quantity: item.quantity,
+          })),
+          paymentMethod:
+            formData.paymentMethod === 'pix'
+              ? 'PIX'
+              : formData.paymentMethod === 'credit'
+                ? 'CREDIT'
+                : 'DEBIT',
+        }),
       });
 
-      await Promise.all(items.map((item) => reduceStock(item.book.id, item.quantity)));
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(errorText || 'Falha ao salvar pedido');
+      }
+
+      const responseData = await response.json().catch(() => null) as { id?: string } | null;
 
       clearCart();
-      navigate(`/pedido/${orderId}`);
+      if (!responseData?.id) {
+        throw new Error('Pedido criado sem identificador');
+      }
+
+      navigate(`/pedido/${responseData.id}`);
     } catch (error) {
       console.error('Erro ao finalizar compra:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Não foi possível finalizar o pedido');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
+  const totalWithShipping = subtotal * (1 - discount) + (shippingCost ?? 0);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -130,8 +271,9 @@ export default function CheckoutPage() {
                   <Label htmlFor="name">Nome Completo *</Label>
                   <Input
                     id="name"
+                    name="name"
                     value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
+                    onChange={handleChange}
                     className={errors.name ? 'border-red-500' : ''}
                   />
                   {errors.name && (
@@ -144,9 +286,10 @@ export default function CheckoutPage() {
                   <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
+                    onChange={handleChange}
                     className={errors.email ? 'border-red-500' : ''}
                   />
                   {errors.email && (
@@ -159,8 +302,11 @@ export default function CheckoutPage() {
                   <Label htmlFor="phone">Telefone *</Label>
                   <Input
                     id="phone"
-                    value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
+                    name="phone"
+                    value={formatPhoneValue(formData.phone)}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    maxLength={15}
                     placeholder="(11) 98542-8782"
                     className={errors.phone ? 'border-red-500' : ''}
                   />
@@ -180,17 +326,20 @@ export default function CheckoutPage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="zipCode">CEP *</Label>
+                  <Label htmlFor="cep">CEP *</Label>
                   <Input
-                    id="zipCode"
-                    value={formData.zipCode}
-                    onChange={(e) => handleChange('zipCode', e.target.value)}
+                    id="cep"
+                    name="cep"
+                    value={formData.cep.length > 5 ? formData.cep.replace(/^(\d{5})(\d{1,3})/, '$1-$2') : formData.cep}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    maxLength={9}
                     placeholder="00000-000"
-                    className={errors.zipCode ? 'border-red-500' : ''}
+                    className={errors.cep ? 'border-red-500' : ''}
                   />
-                  {errors.zipCode && (
+                  {errors.cep && (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-                      {errors.zipCode}
+                      {errors.cep}
                     </p>
                   )}
                 </div>
@@ -199,8 +348,9 @@ export default function CheckoutPage() {
                   <Label htmlFor="street">Rua *</Label>
                   <Input
                     id="street"
+                    name="street"
                     value={formData.street}
-                    onChange={(e) => handleChange('street', e.target.value)}
+                    onChange={handleChange}
                     className={errors.street ? 'border-red-500' : ''}
                   />
                   {errors.street && (
@@ -213,8 +363,11 @@ export default function CheckoutPage() {
                   <Label htmlFor="number">Número *</Label>
                   <Input
                     id="number"
+                    name="number"
                     value={formData.number}
-                    onChange={(e) => handleChange('number', e.target.value)}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    maxLength={6}
                     className={errors.number ? 'border-red-500' : ''}
                   />
                   {errors.number && (
@@ -227,16 +380,18 @@ export default function CheckoutPage() {
                   <Label htmlFor="complement">Complemento</Label>
                   <Input
                     id="complement"
+                    name="complement"
                     value={formData.complement}
-                    onChange={(e) => handleChange('complement', e.target.value)}
+                    onChange={handleChange}
                   />
                 </div>
                 <div>
                   <Label htmlFor="neighborhood">Bairro *</Label>
                   <Input
                     id="neighborhood"
+                    name="neighborhood"
                     value={formData.neighborhood}
-                    onChange={(e) => handleChange('neighborhood', e.target.value)}
+                    onChange={handleChange}
                     className={errors.neighborhood ? 'border-red-500' : ''}
                   />
                   {errors.neighborhood && (
@@ -249,8 +404,9 @@ export default function CheckoutPage() {
                   <Label htmlFor="city">Cidade *</Label>
                   <Input
                     id="city"
+                    name="city"
                     value={formData.city}
-                    onChange={(e) => handleChange('city', e.target.value)}
+                    onChange={handleChange}
                     className={errors.city ? 'border-red-500' : ''}
                   />
                   {errors.city && (
@@ -263,9 +419,11 @@ export default function CheckoutPage() {
                   <Label htmlFor="state">Estado *</Label>
                   <Input
                     id="state"
-                    value={formData.state}
-                    onChange={(e) => handleChange('state', e.target.value)}
+                    name="state"
+                    value={formData.state.toUpperCase()}
+                    onChange={handleChange}
                     placeholder="SP"
+                    inputMode="text"
                     maxLength={2}
                     className={errors.state ? 'border-red-500' : ''}
                   />
@@ -285,7 +443,7 @@ export default function CheckoutPage() {
               </h2>
               <RadioGroup
                 value={formData.paymentMethod}
-                onValueChange={(value) => handleChange('paymentMethod', value)}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value as 'pix' | 'credit' | 'debit' }))}
               >
                 <div className="space-y-3">
                   <label className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700">
@@ -360,17 +518,30 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Frete</span>
-                  <span className="text-green-600 dark:text-green-400">Grátis</span>
+                  <span className={shippingCost !== null ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}>
+                    {shippingCost !== null ? 'R$ 15,00' : '--'}
+                  </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-xl text-slate-900 dark:text-white">
                   <span>Total</span>
-                  <span>R$ {total.toFixed(2)}</span>
+                  <span>R$ {totalWithShipping.toFixed(2)}</span>
                 </div>
               </div>
 
-              <Button type="submit" size="lg" className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600">
-                Confirmar Pedido
+              {submitError && (
+                <p className="mb-4 text-sm text-red-600 dark:text-red-400">
+                  {submitError}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600"
+              >
+                {isSubmitting ? 'Um momento...' : 'Confirmar Pedido'}
               </Button>
 
               <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-400">

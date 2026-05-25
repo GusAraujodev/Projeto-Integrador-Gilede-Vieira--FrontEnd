@@ -12,6 +12,7 @@ export default function CartPage() {
   const { items, updateQuantity, removeFromCart, total, itemCount, applyCoupon, discount, couponCode } = useCart();
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
   const subtotal = items.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
 
@@ -21,6 +22,21 @@ export default function CartPage() {
       setCouponInput('');
     } else {
       setCouponError('Cupom inválido');
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (isCheckoutLoading) {
+      return;
+    }
+
+    setIsCheckoutLoading(true);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      navigate('/checkout');
+    } finally {
+      setIsCheckoutLoading(false);
     }
   };
 
@@ -210,7 +226,7 @@ export default function CartPage() {
               )}
               <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Frete</span>
-                <span className="text-green-600 dark:text-green-400">Grátis</span>
+                  <span className="text-slate-500 dark:text-slate-400">--</span>
               </div>
               <Separator />
               <div className="flex justify-between text-xl text-slate-900 dark:text-white">
@@ -221,11 +237,15 @@ export default function CartPage() {
 
             {/* Checkout Button */}
             <Button
-              onClick={() => navigate('/checkout')}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600"
+              onClick={handleCheckout}
+              disabled={isCheckoutLoading}
+              className="group relative w-full overflow-hidden bg-gradient-to-r from-purple-600 to-pink-500 transition-all duration-300 hover:scale-[1.01] hover:shadow-lg hover:from-purple-700 hover:to-pink-600 dark:from-purple-700 dark:to-pink-600"
               size="lg"
             >
-              Finalizar Compra
+              <span className="relative z-10">{isCheckoutLoading ? 'Um momento...' : 'Finalizar Compra'}</span>
+              {isCheckoutLoading && (
+                <span className="checkout-fill absolute inset-0 bg-white/20" />
+              )}
             </Button>
 
             {/* Payment Methods */}
@@ -235,17 +255,6 @@ export default function CartPage() {
               </p>
             </div>
 
-            {/* Coupon Hints */}
-            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
-              <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
-                Cupons disponíveis:
-              </p>
-              <ul className="text-xs text-slate-500 dark:text-slate-500 space-y-1">
-                <li>• BEMVINDO10 - 10% de desconto</li>
-                <li>• LIVROS20 - 20% de desconto</li>
-                <li>• GILEDE15 - 15% de desconto</li>
-              </ul>
-            </div>
           </div>
         </div>
       </div>

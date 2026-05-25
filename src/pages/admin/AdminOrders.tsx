@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Package, Search, Eye } from 'lucide-react';
 import { type Order, useOrders } from '../../contexts/OrdersContext';
 import { Button } from '../../components/ui/button';
@@ -23,9 +23,13 @@ import {
 import { Separator } from '../../components/ui/separator';
 
 export default function AdminOrders() {
-  const { orders, updateOrderStatus } = useOrders();
+  const { orders, updateOrderStatus, fetchAllOrders } = useOrders();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
+
+  useEffect(() => {
+    void fetchAllOrders();
+  }, [fetchAllOrders]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(search.toLowerCase()) ||

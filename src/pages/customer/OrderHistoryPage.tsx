@@ -7,24 +7,21 @@ import { Badge } from '../../components/ui/badge';
 
 export default function OrderHistoryPage() {
   const { user } = useAuth();
-  const { orders: allOrders } = useOrders();
+  const { fetchUserOrders } = useOrders();
   const [userOrders, setUserOrders] = useState<Order[]>([]);
 
-  console.log('OrderHistoryPage - user:', user);
-  console.log('OrderHistoryPage - all orders:', allOrders);
-
   useEffect(() => {
-    if (user) {
-      // Filter orders by user email - check both userId and customerEmail
-      const filtered = allOrders.filter(order => 
-        order.userId === user.email || order.customerEmail === user.email
-      );
-      console.log('OrderHistoryPage - filtered orders:', filtered);
-      setUserOrders(filtered.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ));
+    if (user?.id) {
+      const loadUserOrders = async () => {
+        const ordersFromApi = await fetchUserOrders(user.id);
+        setUserOrders(ordersFromApi.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
+      };
+
+      void loadUserOrders();
     }
-  }, [user, allOrders]);
+  }, [user, fetchUserOrders]);
 
   const getStatusInfo = (status: Order['status']) => {
     switch (status) {

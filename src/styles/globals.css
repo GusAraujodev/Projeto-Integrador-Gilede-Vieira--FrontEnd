@@ -194,3 +194,18 @@
 html {
   font-size: var(--font-size);
 }
+
+@keyframes checkout-fill {
+  0% {
+    transform: scaleX(0);
+  }
+
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.checkout-fill {
+  transform-origin: left;
+  animation: checkout-fill 900ms ease-out forwards;
+}

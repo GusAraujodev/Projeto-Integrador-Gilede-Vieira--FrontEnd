@@ -11,7 +11,7 @@ import type { Order } from '../../contexts/OrdersContext';
 export default function OrderConfirmationPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { getOrderById } = useOrders();
+  const { getOrderById, fetchOrderById } = useOrders();
   const [order, setOrder] = useState(getOrderById(orderId || ''));
 
   console.log('OrderConfirmationPage - orderId:', orderId);
@@ -21,16 +21,24 @@ export default function OrderConfirmationPage() {
   useEffect(() => {
     if (!order && orderId) {
       console.log('Trying to reload order...');
-      const timer = setTimeout(() => {
-        const foundOrder = getOrderById(orderId);
-        console.log('Reloaded order:', foundOrder);
-        if (foundOrder) {
-          setOrder(foundOrder);
+      const loadOrder = async () => {
+        const local = getOrderById(orderId);
+
+        if (local) {
+          setOrder(local);
+          return;
         }
-      }, 100);
-      return () => clearTimeout(timer);
+
+        const fromApi = await fetchOrderById(orderId);
+
+        if (fromApi) {
+          setOrder(fromApi);
+        }
+      };
+
+      void loadOrder();
     }
-  }, [orderId, order, getOrderById]);
+  }, [orderId, order, getOrderById, fetchOrderById]);
 
   useEffect(() => {
     // Celebration animation
