@@ -52,6 +52,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
+    const syncFromStorage = () => {
+      try {
+        const saved = localStorage.getItem('gilede_user');
+
+        if (!saved) {
+          setUser(null);
+          return;
+        }
+
+        const parsed = JSON.parse(saved) as Partial<User>;
+
+        if (!parsed.id || !parsed.role) {
+          return;
+        }
+
+        setUser({
+          id: String(parsed.id),
+          name: typeof parsed.name === 'string' ? parsed.name : '',
+          email: typeof parsed.email === 'string' ? parsed.email : '',
+          role: String(parsed.role).toLowerCase() as 'admin' | 'customer',
+        });
+      } catch {
+        // ignora atualização inválida
+      }
+    };
+
     const validateSession = async () => {
       try {
         const token = localStorage.getItem('gilede_jwt');
@@ -104,8 +130,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     validateSession();
 
+    const handleAuthUpdated = () => {
+      syncFromStorage();
+    };
+
+    window.addEventListener('auth:updated', handleAuthUpdated);
+    window.addEventListener('storage', handleAuthUpdated);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('auth:updated', handleAuthUpdated);
+      window.removeEventListener('storage', handleAuthUpdated);
     };
   }, []);
 

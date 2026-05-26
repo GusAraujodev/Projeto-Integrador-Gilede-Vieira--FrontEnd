@@ -14,6 +14,7 @@ export default function AdminMLSync() {
   const [mlStatus, setMlStatus] = useState<MlStatus>('disconnected');
   const [statusLoading, setStatusLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const syncedBooks = books.filter(b => b.mlSynced);
@@ -32,9 +33,9 @@ export default function AdminMLSync() {
     } else if (mlParam === 'error') {
       setMlStatus('disconnected');
       setStatusLoading(false);
-      if (reason) {
-        console.error('Erro OAuth ML:', decodeURIComponent(reason));
-      }
+      const decoded = reason ? decodeURIComponent(reason) : 'Erro desconhecido na autorização.';
+      console.error('Erro OAuth ML:', decoded);
+      setErrorMessage(decoded);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -199,6 +200,25 @@ export default function AdminMLSync() {
 
   return (
     <div className="space-y-6">
+      {errorMessage && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="size-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
+              Erro na conexão com o Mercado Livre
+            </p>
+            <p className="text-sm text-red-700 dark:text-red-400">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="text-xs text-red-600 dark:text-red-400 hover:underline mt-2"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl text-slate-900 dark:text-white mb-2">
