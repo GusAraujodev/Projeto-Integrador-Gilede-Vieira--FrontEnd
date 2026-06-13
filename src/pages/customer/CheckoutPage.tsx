@@ -16,6 +16,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shippingCost, setShippingCost] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState('');
+  const [isCepValid, setIsCepValid] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -87,6 +88,7 @@ export default function CheckoutPage() {
 
           if (data.erro) {
             clearAddressFields();
+            setIsCepValid(false);
             return;
           }
 
@@ -98,6 +100,7 @@ export default function CheckoutPage() {
             state: data.uf || '',
           }));
           setShippingCost(15.00);
+          setIsCepValid(true);
         } catch (error) {
           console.error('Erro ao buscar CEP:', error);
           clearAddressFields();
@@ -160,6 +163,10 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isCepValid) {
+    setSubmitError('Por favor, preencha um CEP válido');
+    return;
+  }
     if (!validateForm()) {
       return;
     }
