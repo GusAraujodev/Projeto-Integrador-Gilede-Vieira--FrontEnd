@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate, Link } from 'react-router-dom';
 import { CheckCircle2, Package, Clock, MapPin, CreditCard, ArrowRight, Home, ShoppingBag } from 'lucide-react';
 import { useOrders } from '../../contexts/OrdersContext';
 import { Button } from '../../components/ui/button';
@@ -10,6 +10,8 @@ import type { Order } from '../../contexts/OrdersContext';
 
 export default function OrderConfirmationPage() {
   const { orderId } = useParams();
+  const [searchParams] = useSearchParams();
+  const paymentStatus = searchParams.get('payment');
   const navigate = useNavigate();
   const { getOrderById, fetchOrderById } = useOrders();
   const [order, setOrder] = useState(getOrderById(orderId || ''));
@@ -104,6 +106,33 @@ export default function OrderConfirmationPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {paymentStatus === 'success' && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl px-5 py-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+          <span className="text-2xl">✅</span>
+          <div>
+            <p className="font-semibold text-green-800 dark:text-green-300">Pagamento aprovado!</p>
+            <p className="text-sm text-green-700 dark:text-green-400">Seu pedido foi confirmado e está sendo preparado.</p>
+          </div>
+        </div>
+      )}
+      {paymentStatus === 'failure' && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl px-5 py-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+          <span className="text-2xl">❌</span>
+          <div>
+            <p className="font-semibold text-red-800 dark:text-red-300">Pagamento não aprovado</p>
+            <p className="text-sm text-red-700 dark:text-red-400">Tente novamente ou escolha outro método.</p>
+          </div>
+        </div>
+      )}
+      {paymentStatus === 'pending' && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl px-5 py-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+          <span className="text-2xl">⏳</span>
+          <div>
+            <p className="font-semibold text-yellow-800 dark:text-yellow-300">Pagamento em processamento</p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-400">Aguarde a confirmação por e-mail.</p>
+          </div>
+        </div>
+      )}
       {/* Success Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center size-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mb-4">

@@ -17,6 +17,7 @@ export default function CheckoutPage() {
   const [shippingCost, setShippingCost] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [isCepValid, setIsCepValid] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -35,11 +36,12 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Redirect if cart is empty (but not during submission)
-  useEffect(() => {
-    if (items.length === 0 && !isSubmitting) {
-      navigate('/carrinho');
-    }
-  }, [items.length, navigate, isSubmitting]);
+ useEffect(() => {
+  // Adicione a condição && !isFinishing
+  if (items.length === 0 && !isSubmitting && !isFinishing) {
+    navigate('/carrinho');
+  }
+}, [items.length, navigate, isSubmitting, isFinishing]);
 
   // Don't render if cart is empty and not submitting
   if (items.length === 0 && !isSubmitting) {
@@ -149,7 +151,13 @@ export default function CheckoutPage() {
     if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
     if (!formData.email.trim()) newErrors.email = 'Email é obrigatório';
     if (!formData.phone.trim()) newErrors.phone = 'Telefone é obrigatório';
-    if (!formData.cep.trim()) newErrors.cep = 'CEP é obrigatório';
+
+const cepDigits = formData.cep.replace(/\D/g, '');
+    if (!formData.cep.trim()) {
+      newErrors.cep = 'CEP é obrigatório';
+    } else if (cepDigits.length !== 8) {
+      newErrors.cep = 'CEP inválido — informe os 8 dígitos';
+    }
     if (!formData.street.trim()) newErrors.street = 'Rua é obrigatória';
     if (!formData.number.trim()) newErrors.number = 'Número é obrigatório';
     if (!formData.neighborhood.trim()) newErrors.neighborhood = 'Bairro é obrigatório';
@@ -160,103 +168,82 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!isCepValid) {
-    setSubmitError('Por favor, preencha um CEP válido');
+  if (!isCepValid) {
+    setSubmitError('Por favor, informe um CEP válido.');
     return;
   }
-    if (!validateForm()) {
-      return;
-    }
+  if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    setSubmitError('');
+  setIsSubmitting(true);
+  setSubmitError('');
 
-    try {
-      const token = localStorage.getItem('gilede_jwt');
-      const savedUser = localStorage.getItem('gilede_user');
-      const userId = (() => {
-        try {
-          if (savedUser) {
-            const parsedUser = JSON.parse(savedUser) as { id?: string | number };
-            if (parsedUser?.id) {
-              return String(parsedUser.id);
-            }
-          }
+  try {
+    const token = localStorage.getItem('gilede_jwt');
+    const savedUser = localStorage.getItem('gilede_user');
+    const userId = user?.id || (savedUser ? JSON.parse(savedUser).id : null);
 
-          if (user?.id) {
-            return user.id;
-          }
-
-          if (!token) return null;
-
-          const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-          return payload.userId || payload.id || payload.sub || null;
-        } catch {
-          return null;
-        }
-      })();
-
-      if (!userId) {
-        throw new Error('Não foi possível identificar o usuário logado');
-      }
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    // 1. Criar o pedido
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        userId,
+        address: {
+          street: formData.street,
+          number: formData.number,
+          complement: formData.complement,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.cep,
         },
-        body: JSON.stringify({
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerPhone: formData.phone,
-          userId,
-          address: {
-            street: formData.street,
-            number: formData.number,
-            complement: formData.complement,
-            neighborhood: formData.neighborhood,
-            city: formData.city,
-            state: formData.state,
-            zipCode: formData.cep,
-          },
-          items: items.map((item) => ({
-            bookId: item.book.id,
-            quantity: item.quantity,
-          })),
-          paymentMethod:
-            formData.paymentMethod === 'pix'
-              ? 'PIX'
-              : formData.paymentMethod === 'credit'
-                ? 'CREDIT'
-                : 'DEBIT',
-        }),
+        items: items.map((item) => ({ bookId: item.book.id, quantity: item.quantity })),
+        paymentMethod: formData.paymentMethod.toUpperCase(),
+        shippingCost: shippingCost ?? 0,
+      }),
+    });
+
+    if (!response.ok) throw new Error('Falha ao criar pedido');
+    const orderData = await response.json() as { id: string };
+    
+    // 2. Tentar pagamento
+    try {
+      const paymentRes = await fetch(`${import.meta.env.VITE_API_URL}/orders/${orderData.id}/payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new Error(errorText || 'Falha ao salvar pedido');
+      if (paymentRes.ok) {
+        const paymentData = await paymentRes.json() as { checkoutUrl?: string };
+        if (paymentData.checkoutUrl) {
+          clearCart(); // Limpa SÓ quando já temos o redirecionamento garantido
+          window.location.href = paymentData.checkoutUrl;
+          return;
+        }
       }
-
-      const responseData = await response.json().catch(() => null) as { id?: string } | null;
-
-      clearCart();
-      if (!responseData?.id) {
-        throw new Error('Pedido criado sem identificador');
-      }
-
-      navigate(`/pedido/${responseData.id}`);
-    } catch (error) {
-      console.error('Erro ao finalizar compra:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Não foi possível finalizar o pedido');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      console.warn('Falha na integração com MP, seguindo para detalhes do pedido...');
     }
-  };
 
+    // 3. Sucesso sem Mercado Pago ou falha no MP: vai para a página do pedido
+    clearCart(); 
+    navigate(`/pedido/${orderData.id}`);
+
+  } catch (error) {
+    console.error('Erro:', error);
+    setSubmitError(error instanceof Error ? error.message : 'Erro ao finalizar pedido');
+    setIsSubmitting(false); // Só volta a habilitar o botão se der erro
+  }
+};
   const subtotal = items.reduce((sum, item) => sum + item.book.price * item.quantity, 0);
   const totalWithShipping = subtotal * (1 - discount) + (shippingCost ?? 0);
 
@@ -526,7 +513,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Frete</span>
                   <span className={shippingCost !== null ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}>
-                    {shippingCost !== null ? 'R$ 15,00' : '--'}
+                    {shippingCost !== null ? `R$ ${shippingCost.toFixed(2)}` : '--'}
                   </span>
                 </div>
                 <Separator />
