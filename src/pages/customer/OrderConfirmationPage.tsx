@@ -11,39 +11,34 @@ import type { Order } from '../../contexts/OrdersContext';
 export default function OrderConfirmationPage() {
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
-  const paymentStatus = searchParams.get('payment');
   const navigate = useNavigate();
   const { getOrderById, fetchOrderById } = useOrders();
   const [order, setOrder] = useState(getOrderById(orderId || ''));
 
-  console.log('OrderConfirmationPage - orderId:', orderId);
-  console.log('OrderConfirmationPage - order found:', order);
+  // Lê status do MP (status=approved) ou interno (payment=success)
+  const mpStatus = searchParams.get('status') || searchParams.get('collection_status');
+  const internalStatus = searchParams.get('payment');
+  const isApproved = mpStatus === 'approved' || internalStatus === 'success';
+  const isPending = !isApproved && (mpStatus === 'pending' || mpStatus === null || mpStatus === 'null' || !mpStatus);
+  const isFailure = mpStatus === 'rejected' || mpStatus === 'cancelled' || internalStatus === 'failure';
 
-  // Try to reload order if not found initially
+  // Reload order if not found initially
   useEffect(() => {
     if (!order && orderId) {
-      console.log('Trying to reload order...');
       const loadOrder = async () => {
         const local = getOrderById(orderId);
-
-        if (local) {
-          setOrder(local);
-          return;
-        }
-
+        if (local) { setOrder(local); return; }
         const fromApi = await fetchOrderById(orderId);
-
-        if (fromApi) {
-          setOrder(fromApi);
-        }
+        if (fromApi) setOrder(fromApi);
       };
-
       void loadOrder();
     }
   }, [orderId, order, getOrderById, fetchOrderById]);
 
+  // Confetti só quando aprovado
   useEffect(() => {
-    // Celebration animation
+    if (!isApproved) return;
+
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
@@ -52,42 +47,23 @@ export default function OrderConfirmationPage() {
       return Math.random() * (max - min) + min;
     }
 
-    const interval: ReturnType<typeof setInterval> = setInterval(function() {
+    const interval = setInterval(() => {
       const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
+      if (timeLeft <= 0) return clearInterval(interval);
       const particleCount = 50 * (timeLeft / duration);
-      
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        colors: ['#9333ea', '#ec4899', '#a855f7', '#f472b6']
-      });
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        colors: ['#9333ea', '#ec4899', '#a855f7', '#f472b6']
-      });
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }, colors: ['#9333ea', '#ec4899', '#a855f7', '#f472b6'] });
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: ['#9333ea', '#ec4899', '#a855f7', '#f472b6'] });
     }, 250);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isApproved]);
 
   if (!order) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <Package className="size-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-        <h2 className="text-2xl text-slate-900 dark:text-white mb-2">
-          Pedido não encontrado
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 mb-6">
-          Não foi possível encontrar este pedido
-        </p>
+        <h2 className="text-2xl text-slate-900 dark:text-white mb-2">Pedido não encontrado</h2>
+        <p className="text-slate-600 dark:text-slate-400 mb-6">Não foi possível encontrar este pedido</p>
         <Button onClick={() => navigate('/')} className="bg-gradient-to-r from-purple-600 to-pink-500">
           Voltar para Home
         </Button>
@@ -106,7 +82,9 @@ export default function OrderConfirmationPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {paymentStatus === 'success' && (
+
+      {/* Banner de status do pagamento */}
+      {isApproved && (
         <div className="mb-6 flex items-center gap-3 rounded-xl px-5 py-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
           <span className="text-2xl">✅</span>
           <div>
@@ -115,7 +93,7 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
       )}
-      {paymentStatus === 'failure' && (
+      {isFailure && (
         <div className="mb-6 flex items-center gap-3 rounded-xl px-5 py-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
           <span className="text-2xl">❌</span>
           <div>
@@ -124,113 +102,83 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
       )}
-      {paymentStatus === 'pending' && (
+      {isPending && !isFailure && (
         <div className="mb-6 flex items-center gap-3 rounded-xl px-5 py-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
           <span className="text-2xl">⏳</span>
           <div>
-            <p className="font-semibold text-yellow-800 dark:text-yellow-300">Pagamento em processamento</p>
-            <p className="text-sm text-yellow-700 dark:text-yellow-400">Aguarde a confirmação por e-mail.</p>
+            <p className="font-semibold text-yellow-800 dark:text-yellow-300">Aguardando pagamento</p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-400">
+              Seu pedido foi registrado. Complete o pagamento para confirmar.{' '}
+              <Link to="/historico" className="underline font-medium">Ver meus pedidos</Link>
+            </p>
           </div>
         </div>
       )}
-      {/* Success Header */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center size-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mb-4">
-          <CheckCircle2 className="size-10 text-white" />
-        </div>
-        <h1 className="text-3xl md:text-4xl text-slate-900 dark:text-white mb-2">
-          Pedido Confirmado! 🎉
-        </h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
-          Recebemos seu pedido e estamos preparando tudo com carinho
-        </p>
-      </div>
 
-      {/* Order Number */}
+      {/* Header */}
+      {isApproved ? (
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center size-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mb-4">
+            <CheckCircle2 className="size-10 text-white" />
+          </div>
+          <h1 className="text-3xl md:text-4xl text-slate-900 dark:text-white mb-2">Pedido Confirmado! 🎉</h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400">Recebemos seu pedido e estamos preparando tudo com carinho</p>
+        </div>
+      ) : (
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center size-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full mb-4">
+            <Clock className="size-10 text-yellow-600 dark:text-yellow-400" />
+          </div>
+          <h1 className="text-3xl md:text-4xl text-slate-900 dark:text-white mb-2">Pedido Registrado</h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400">Seu pedido foi criado. Finalize o pagamento para confirmá-lo.</p>
+        </div>
+      )}
+
+      {/* Número do Pedido */}
       <Card className="dark:bg-slate-800 dark:border-slate-700 mb-6">
         <CardContent className="p-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                Número do Pedido
-              </p>
-              <p className="text-2xl text-slate-900 dark:text-white font-mono">
-                #{order.id.slice(0, 8).toUpperCase()}
-              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Número do Pedido</p>
+              <p className="text-2xl text-slate-900 dark:text-white font-mono">#{order.id.slice(0, 8).toUpperCase()}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                Data do Pedido
-              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Data do Pedido</p>
               <p className="text-slate-900 dark:text-white">
-                {new Date(order.createdAt).toLocaleDateString('pt-BR', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric'
-                })}
+                {new Date(order.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* What's Next */}
+      {/* Próximos Passos */}
       <Card className="dark:bg-slate-800 dark:border-slate-700 mb-6">
         <CardContent className="p-6">
           <h2 className="text-xl text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Clock className="size-5 text-purple-600 dark:text-purple-400" />
             Próximos Passos
           </h2>
-          
           <div className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 size-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center text-white">
-                1
+            {[
+              { title: 'Confirmação por Email', desc: `Enviamos um email de confirmação para ${order.customerEmail} com todos os detalhes do seu pedido` },
+              { title: 'Preparação do Pedido', desc: 'Nossa equipe está separando os livros com muito cuidado para você' },
+              { title: 'Envio e Rastreamento', desc: 'Você receberá o código de rastreamento assim que o pedido for despachado' },
+            ].map((step, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="flex-shrink-0 size-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center text-white">{i + 1}</div>
+                <div>
+                  <h3 className="text-slate-900 dark:text-white mb-1">{step.title}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{step.desc}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-slate-900 dark:text-white mb-1">
-                  Confirmação por Email
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Enviamos um email de confirmação para <strong>{order.customerEmail}</strong> com todos os detalhes do seu pedido
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 size-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center text-white">
-                2
-              </div>
-              <div>
-                <h3 className="text-slate-900 dark:text-white mb-1">
-                  Preparação do Pedido
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Nossa equipe está separando os livros com muito cuidado para você
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 size-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center text-white">
-                3
-              </div>
-              <div>
-                <h3 className="text-slate-900 dark:text-white mb-1">
-                  Envio e Rastreamento
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Você receberá o código de rastreamento assim que o pedido for despachado
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Order Details */}
+      {/* Endereço e Pagamento */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Delivery Address */}
         <Card className="dark:bg-slate-800 dark:border-slate-700">
           <CardContent className="p-6">
             <h3 className="text-lg text-slate-900 dark:text-white mb-3 flex items-center gap-2">
@@ -248,7 +196,6 @@ export default function OrderConfirmationPage() {
           </CardContent>
         </Card>
 
-        {/* Payment Method */}
         <Card className="dark:bg-slate-800 dark:border-slate-700">
           <CardContent className="p-6">
             <h3 className="text-lg text-slate-900 dark:text-white mb-3 flex items-center gap-2">
@@ -256,52 +203,34 @@ export default function OrderConfirmationPage() {
               Forma de Pagamento
             </h3>
             <div className="text-sm">
-              <p className="text-slate-900 dark:text-white mb-2">
-                {getPaymentMethodLabel(order.paymentMethod)}
-              </p>
-              {order.paymentMethod === 'pix' && (
-                <p className="text-slate-600 dark:text-slate-400">
-                  ✅ Pagamento confirmado
-                </p>
-              )}
-              {(order.paymentMethod === 'credit' || order.paymentMethod === 'debit') && (
-                <p className="text-slate-600 dark:text-slate-400">
-                  ✅ Pagamento processado
-                </p>
-              )}
+              <p className="text-slate-900 dark:text-white mb-2">{getPaymentMethodLabel(order.paymentMethod)}</p>
+              {isApproved && <p className="text-green-600 dark:text-green-400">✅ Pagamento confirmado</p>}
+              {isPending && !isFailure && <p className="text-yellow-600 dark:text-yellow-400">⏳ Aguardando pagamento</p>}
+              {isFailure && <p className="text-red-600 dark:text-red-400">❌ Pagamento não aprovado</p>}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Order Items */}
+      {/* Itens do Pedido */}
       <Card className="dark:bg-slate-800 dark:border-slate-700 mb-6">
         <CardContent className="p-6">
           <h3 className="text-lg text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Package className="size-5 text-purple-600 dark:text-purple-400" />
             Itens do Pedido
           </h3>
-          
           <div className="space-y-3">
             {order.items.map((item, index) => (
               <div key={index} className="flex justify-between items-center">
                 <div className="flex-1">
-                  <p className="text-slate-900 dark:text-white">
-                    {item.book.title}
-                  </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Quantidade: {item.quantity}
-                  </p>
+                  <p className="text-slate-900 dark:text-white">{item.book.title}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Quantidade: {item.quantity}</p>
                 </div>
-                <p className="text-slate-900 dark:text-white">
-                  R$ {(item.book.price * item.quantity).toFixed(2)}
-                </p>
+                <p className="text-slate-900 dark:text-white">R$ {(item.book.price * item.quantity).toFixed(2)}</p>
               </div>
             ))}
           </div>
-
           <Separator className="my-4" />
-
           <div className="space-y-2">
             <div className="flex justify-between text-slate-600 dark:text-slate-400">
               <span>Subtotal</span>
@@ -315,7 +244,9 @@ export default function OrderConfirmationPage() {
             )}
             <div className="flex justify-between text-slate-600 dark:text-slate-400">
               <span>Frete</span>
-              <span className="text-green-600 dark:text-green-400">Grátis</span>
+              <span className={order.shippingCost > 0 ? 'text-slate-900 dark:text-white' : 'text-green-600 dark:text-green-400'}>
+                {order.shippingCost > 0 ? `R$ ${order.shippingCost.toFixed(2)}` : 'Grátis'}
+              </span>
             </div>
             <Separator />
             <div className="flex justify-between text-xl text-slate-900 dark:text-white">
@@ -326,49 +257,21 @@ export default function OrderConfirmationPage() {
         </CardContent>
       </Card>
 
-      {/* Actions */}
+      {/* Ações */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button
-          asChild
-          variant="outline"
-          size="lg"
-          className="dark:border-slate-600"
-        >
-          <Link to="/">
-            <Home className="mr-2 size-4" />
-            Voltar para Home
-          </Link>
+        <Button asChild variant="outline" size="lg" className="dark:border-slate-600">
+          <Link to="/"><Home className="mr-2 size-4" />Voltar para Home</Link>
         </Button>
-        
-        <Button
-          asChild
-          variant="outline"
-          size="lg"
-          className="dark:border-slate-600"
-        >
-          <Link to="/catalogo">
-            <ShoppingBag className="mr-2 size-4" />
-            Continuar Comprando
-          </Link>
+        <Button asChild variant="outline" size="lg" className="dark:border-slate-600">
+          <Link to="/catalogo"><ShoppingBag className="mr-2 size-4" />Continuar Comprando</Link>
         </Button>
-
-        <Button
-          asChild
-          size="lg"
-          className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
-        >
-          <Link to="/historico">
-            Acompanhar Pedido
-            <ArrowRight className="ml-2 size-4" />
-          </Link>
+        <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600">
+          <Link to="/historico">Acompanhar Pedido<ArrowRight className="ml-2 size-4" /></Link>
         </Button>
       </div>
 
-      {/* Help Section */}
       <div className="mt-8 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-center">
-        <p className="text-slate-900 dark:text-white mb-2">
-          📦 Acompanhe o status do seu pedido em tempo real
-        </p>
+        <p className="text-slate-900 dark:text-white mb-2">📦 Acompanhe o status do seu pedido em tempo real</p>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
           Acesse <Link to="/historico" className="text-purple-600 dark:text-purple-400 hover:underline">Histórico de Pedidos</Link> para ver todas as atualizações
         </p>
