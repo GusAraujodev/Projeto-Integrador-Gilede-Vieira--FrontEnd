@@ -4,9 +4,10 @@ import { Package, ChevronRight, Calendar, MapPin } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrders, Order } from '../../contexts/OrdersContext';
 import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
 
 export default function OrderHistoryPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { fetchUserOrders } = useOrders();
   const [userOrders, setUserOrders] = useState<Order[]>([]);
 
@@ -165,9 +166,32 @@ export default function OrderHistoryPage() {
 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                   <span className="text-slate-600 dark:text-slate-400">Total:</span>
-                  <span className="text-2xl text-slate-900 dark:text-white">
-                    R$ {order.total.toFixed(2)}
-                  </span>
+                  <div className="flex items-center gap-4">
+                    {order.status === 'PENDING_PAYMENT' && (
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-purple-600 to-pink-500"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          try {
+                            const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/${order.id}/payment`, {
+                              method: 'POST',
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+                            }
+                          } catch (e) { console.error(e); }
+                        }}
+                      >
+                        Pagar Agora
+                      </Button>
+                    )}
+                    <span className="text-2xl text-slate-900 dark:text-white">
+                      R$ {order.total.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </Link>
             );

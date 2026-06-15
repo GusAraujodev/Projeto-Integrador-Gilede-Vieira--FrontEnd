@@ -22,6 +22,7 @@ export interface Order {
   };
   paymentMethod: 'pix' | 'credit' | 'debit';
   total: number;
+  shippingCost: number;
   discount: number;
   couponCode: string | null;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
@@ -87,6 +88,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           ? 'debit'
           : 'pix',
       total: Number(order?.total ?? 0),
+      shippingCost: Number(order?.shippingCost ?? 0),
       discount: Number(order?.discount ?? 0),
       couponCode: typeof order?.couponCode === 'string' ? order.couponCode : null,
       status: String(order?.status ?? 'pending').toLowerCase() as Order['status'],
